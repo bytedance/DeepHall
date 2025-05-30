@@ -156,6 +156,7 @@ class OptimizerKfac:
 
 @dataclass
 class Optim:
+    reset: bool = False
     iterations: int = 1000
     optimizer: OptimizerName | None = OptimizerName.kfac
     adam: OptimizerAdam = field(default_factory=OptimizerAdam)

@@ -97,7 +97,7 @@ def train_loop(cfg: Config, log_manager: LogManager):
     ):  # Reset steps because inference run is another run
         initial_step = 0
 
-    if opt_state is None:
+    if cfg.optim.reset or opt_state is None:
         sharded_key, subkey = kfac_jax.utils.p_split(sharded_key)
         opt_state = opt_init(params, subkey, data)
 
