@@ -18,6 +18,8 @@ from flax import linen as nn
 from jax import numpy as jnp
 from scipy import special as ss
 
+from deephall.config import System
+
 
 def make_monopole_harm(q, l, m):  # NOQA
     norm_factor = np.sqrt(
@@ -45,13 +47,12 @@ def make_monopole_harm(q, l, m):  # NOQA
 
 
 class Free(nn.Module):
-    nspins: tuple[int, int]
-    flux: float
+    system: System
 
     def setup(self):
         orbitals = []
-        remaining_elec = sum(self.nspins)
-        m = ell = q = self.flux / 2
+        remaining_elec = sum(self.system.nspins)
+        m = ell = q = self.system.flux / 2
         while remaining_elec > 0:
             orbitals.append(make_monopole_harm(q, ell, m))
             remaining_elec -= 1

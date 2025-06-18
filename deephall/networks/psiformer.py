@@ -24,6 +24,8 @@ The details for the orbital construction are located in `blocks.py`.
 from flax import linen as nn
 from jax import numpy as jnp
 
+from deephall.config import System
+
 from .blocks import Jastrow, Orbitals
 
 
@@ -59,8 +61,7 @@ class PsiformerLayers(nn.Module):
 
 
 class Psiformer(nn.Module):
-    nspins: tuple[int, int]
-    Q: float
+    system: System
     ndets: int
     num_heads: int
     heads_dim: int
@@ -75,14 +76,14 @@ class Psiformer(nn.Module):
     @nn.compact
     def orbitals(self, electrons):
         theta, phi = electrons[..., 0], electrons[..., 1]
-        spins = jnp.array([1] * self.nspins[0] + [-1] * self.nspins[1])
+        spins = jnp.array([1] * self.system.nspins[0] + [-1] * self.system.nspins[1])
         h_one = PsiformerLayers(
             num_heads=self.num_heads,
             num_layers=self.num_layers,
             heads_dim=self.heads_dim,
         )(electrons, spins)
-        orbitals = Orbitals(Q=self.Q, nspins=self.nspins, ndets=self.ndets)(
-            h_one, theta, phi
-        )
-        jastrow = Jastrow(self.nspins)(electrons)
-        return jnp.exp(jastrow / sum(self.nspins)) * orbitals
+        orbitals = Orbitals(
+            Q=self.system.flux / 2, nspins=self.system.nspins, ndets=self.ndets
+        )(h_one, theta, phi)
+        jastrow = Jastrow(self.system.nspins)(electrons)
+        return jnp.exp(jastrow / sum(self.system.nspins)) * orbitals

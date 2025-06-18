@@ -15,31 +15,29 @@
 from flax import linen as nn
 from jax import numpy as jnp
 
+from deephall.config import System
+
 
 class Laughlin(nn.Module):
     """Create Laughlin wavefunction for ground or quasiparticle/quasihole state."""
 
-    nspins: tuple[int, int]
-    flux: float
+    system: System
 
     cf_flux: int = 1
     "Flux p for composite fermion."
 
-    excitation_lz: float = 0
-    "The Lz for quasiparticle/quasihole state."
-
     def setup(self):
-        nelec = sum(self.nspins)
-        self.Q1 = self.flux / 2 - self.cf_flux * (sum(self.nspins) - 1)
+        nelec = sum(self.system.nspins)
+        self.Q1 = self.system.flux / 2 - self.cf_flux * (sum(self.system.nspins) - 1)
         if nelec == 2 * self.Q1 + 1:  # Ground state
             self.cf_orbitals = self.full_orbitals
         elif nelec == 2 * self.Q1:  # Quasihole
             self._check_lz()
-            assert -abs(self.Q1) <= self.excitation_lz <= abs(self.Q1)
+            assert -abs(self.Q1) <= self.system.excitation_lz <= abs(self.Q1)
             self.cf_orbitals = self.quasihole_orbitals
         elif nelec == 2 * self.Q1 + 2:  # Quasiparitcle
             self._check_lz()
-            assert -abs(self.Q1) - 1 <= self.excitation_lz <= abs(self.Q1) + 1
+            assert -abs(self.Q1) - 1 <= self.system.excitation_lz <= abs(self.Q1) + 1
             self.cf_orbitals = self.quasihole_orbitals
             self.cf_orbitals = self.quasiparticle_orbitals
         else:
@@ -47,8 +45,10 @@ class Laughlin(nn.Module):
 
     def _check_lz(self):
         """Make sure the specified Lz is possible for quasiparticle/quasihole state."""
-        diff = self.excitation_lz - self.Q1
-        assert int(diff) == diff, f"Impossible Lz={self.excitation_lz} for excitation"
+        diff = self.system.excitation_lz - self.Q1
+        assert (
+            int(diff) == diff
+        ), f"Impossible Lz={self.system.excitation_lz} for excitation"
 
     def __call__(self, electrons):
         orbitals = self.orbitals(electrons)
@@ -74,8 +74,8 @@ class Laughlin(nn.Module):
         Q = self.Q1
         m = jnp.concat(
             [
-                jnp.arange(-Q, -self.excitation_lz),
-                jnp.arange(Q, -self.excitation_lz, -1),
+                jnp.arange(-Q, -self.system.excitation_lz),
+                jnp.arange(Q, -self.system.excitation_lz, -1),
             ]
         )
         element = u * v[:, 0] - u[:, 0] * v + jnp.eye(u.shape[0])
@@ -93,7 +93,7 @@ class Laughlin(nn.Module):
         jastrow_dv = jastrow * (jnp.sum(-u[:, 0] / element, axis=-1, keepdims=True) + u)
         jastrow_du = jastrow * (jnp.sum(v[:, 0] / element, axis=-1, keepdims=True) - v)
 
-        m1 = self.excitation_lz
+        m1 = self.system.excitation_lz
         excited = (u ** (Q + m1) * v ** (Q - m1)) * (
             (Q + 1 + m1) * v * jastrow_dv - (Q + 1 - m1) * u * jastrow_du
         )

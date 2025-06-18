@@ -21,17 +21,13 @@ from deephall.networks.psiformer import Psiformer
 
 
 def make_network(system: System, network: Network) -> nn.Module:
-    Q = system.flux / 2
     if network.type == NetworkType.free:
-        return Free(flux=system.flux, nspins=system.nspins)
+        return Free(system=system)
     if network.type == NetworkType.laughlin:
-        return Laughlin(
-            flux=system.flux, nspins=system.nspins, excitation_lz=system.lz_center
-        )
+        return Laughlin(system=system)
     if network.type == NetworkType.psiformer:
         return Psiformer(
-            Q=Q,
-            nspins=system.nspins,
+            system=system,
             ndets=network.psiformer.determinants,
             num_heads=network.psiformer.num_heads,
             num_layers=network.psiformer.num_layers,
