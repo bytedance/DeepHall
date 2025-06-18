@@ -36,5 +36,4 @@ def make_network(system: System, network: Network) -> nn.Module:
             num_heads=network.psiformer.num_heads,
             num_layers=network.psiformer.num_layers,
             heads_dim=network.psiformer.heads_dim,
-            orbital_type=network.orbital,
         )

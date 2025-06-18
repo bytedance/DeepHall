@@ -17,8 +17,6 @@ from flax import linen as nn
 from jax import numpy as jnp
 from scipy import special as ss
 
-from deephall.config import OrbitalType
-
 
 class FeaturedOrbitals(nn.Module):
     nspins: tuple[int, int]
@@ -36,7 +34,6 @@ class FeaturedOrbitals(nn.Module):
 
 
 class Orbitals(nn.Module):
-    type: OrbitalType
     Q: float
     nspins: tuple[int, int]
     ndets: int
@@ -44,22 +41,13 @@ class Orbitals(nn.Module):
     def setup(self):
         m = np.arange(-self.Q, self.Q + 1)
         self.norm_factor = jnp.array(np.sqrt(ss.comb(2 * self.Q, self.Q - m)))
-        if self.type == OrbitalType.full:
-            self.featured_orbitals = FeaturedOrbitals(
-                nspins=self.nspins,
-                features=(int(self.Q * 2) + 1, sum(self.nspins), self.ndets),
-            )
-        elif self.type == OrbitalType.sparse:
-            self.featured_orbitals = FeaturedOrbitals(
-                nspins=self.nspins,
-                features=(8, sum(self.nspins), self.ndets),
-            )
-            self.lll_weight = nn.DenseGeneral(int(2 * self.Q + 1), axis=1)
+        self.featured_orbitals = FeaturedOrbitals(
+            nspins=self.nspins,
+            features=(int(self.Q * 2) + 1, sum(self.nspins), self.ndets),
+        )
 
     def __call__(self, h_one, theta, phi):
         orbitals = self.featured_orbitals(h_one)
-        if self.type == OrbitalType.sparse:
-            orbitals = self.lll_weight(orbitals).transpose((0, 3, 1, 2))
 
         m = jnp.arange(-self.Q, self.Q + 1)
         u = (jnp.cos(theta / 2) * jnp.exp(0.5j * phi))[..., None]

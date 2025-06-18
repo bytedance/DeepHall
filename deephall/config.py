@@ -85,11 +85,6 @@ class NetworkType(StrEnum):
     free = "free"
 
 
-class OrbitalType(StrEnum):
-    full = "full"
-    sparse = "sparse"
-
-
 @dataclass
 class PsiformerNetwork:
     num_heads: int = 4
@@ -101,7 +96,6 @@ class PsiformerNetwork:
 @dataclass
 class Network:
     type: NetworkType = NetworkType.psiformer
-    orbital: OrbitalType = OrbitalType.full
     psiformer: PsiformerNetwork = field(default_factory=PsiformerNetwork)
 
 
