@@ -92,7 +92,7 @@ To implement a custom neural network wavefunction, follow the steps below:
 
 ### Step 1: Implement the Network
 
-Create a new file in the `deephall/networks/` directory, for example, `deephall/networks/mynet.py`. You can use the existing implementation in `deephall/networks/psiformer.py` as a reference. Below is a minimal example of how to structure your network:
+Create a new file in the `deephall/networks/` directory, for example, `deephall/networks/mynet.py`. You can use the existing implementation in `deephall/networks/mhpo.py` as a reference. Below is a minimal example of how to structure your network:
 
 ```python
 from flax import linen as nn

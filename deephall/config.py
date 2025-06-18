@@ -83,7 +83,7 @@ class System:
 
 @dataclass
 class Network:
-    type: str = "psiformer"
+    type: str = "mhpo"
 
 
 class DotDict(dict):
@@ -231,9 +231,7 @@ class Config:
     laplacian: LaplacianMode = LaplacianMode.hessian
     seed: int = field(default_factory=lambda: int(time.time()))
     system: System = field(default_factory=System)
-    network: DictConfig = field(
-        default_factory=lambda: DictConfig({"type": "psiformer"})
-    )
+    network: DictConfig = field(default_factory=lambda: DictConfig({"type": "mhpo"}))
     mcmc: MCMC = field(default_factory=MCMC)
     optim: Optim = field(default_factory=Optim)
     log: Log = field(default_factory=Log)

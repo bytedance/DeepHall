@@ -18,6 +18,37 @@ from jax import numpy as jnp
 from scipy import special as ss
 
 
+class PsiformerLayers(nn.Module):
+    num_heads: int
+    heads_dim: int
+    num_layers: int
+
+    @nn.compact
+    def __call__(self, electrons: jnp.ndarray, spins: jnp.ndarray):
+        theta, phi = electrons[..., 0], electrons[..., 1]
+        h_one = self.input_feature(theta, phi, spins)
+        attention_dim = self.num_heads * self.heads_dim
+        h_one = nn.Dense(attention_dim, use_bias=False)(h_one)
+        for _ in range(self.num_layers):
+            attn_out = nn.MultiHeadAttention(num_heads=self.num_heads)(h_one)
+            h_one += nn.Dense(attention_dim, use_bias=False)(attn_out)
+            h_one = nn.LayerNorm(epsilon=1e-5)(h_one)
+            h_one += nn.tanh(nn.Dense(attention_dim)(h_one))
+            h_one = nn.LayerNorm(epsilon=1e-5)(h_one)
+        return h_one
+
+    def input_feature(self, theta: jnp.ndarray, phi: jnp.ndarray, spins: jnp.ndarray):
+        return jnp.stack(
+            [
+                jnp.cos(theta),
+                jnp.sin(theta) * jnp.cos(phi),
+                jnp.sin(theta) * jnp.sin(phi),
+                spins,
+            ],
+            axis=-1,
+        )
+
+
 class FeaturedOrbitals(nn.Module):
     nspins: tuple[int, int]
     features: list[int]
@@ -33,7 +64,7 @@ class FeaturedOrbitals(nn.Module):
         return jnp.concat(orbital_list)
 
 
-class Orbitals(nn.Module):
+class MonopoleProductOrbitals(nn.Module):
     Q: float
     nspins: tuple[int, int]
     ndets: int
