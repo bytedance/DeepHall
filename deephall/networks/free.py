@@ -20,6 +20,8 @@ from scipy import special as ss
 
 from deephall.config import System
 
+__all__ = ["Free"]
+
 
 def make_monopole_harm(q, l, m):  # NOQA
     norm_factor = np.sqrt(

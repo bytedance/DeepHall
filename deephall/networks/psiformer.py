@@ -28,6 +28,8 @@ from deephall.config import System
 
 from .blocks import Jastrow, Orbitals
 
+__all__ = ["Psiformer", "PsiformerLayers"]
+
 
 class PsiformerLayers(nn.Module):
     num_heads: int
@@ -62,10 +64,10 @@ class PsiformerLayers(nn.Module):
 
 class Psiformer(nn.Module):
     system: System
-    ndets: int
-    num_heads: int
-    heads_dim: int
-    num_layers: int
+    ndets: int = 1
+    num_heads: int = 4
+    heads_dim: int = 64
+    num_layers: int = 2
 
     def __call__(self, electrons):
         orbitals = self.orbitals(electrons)

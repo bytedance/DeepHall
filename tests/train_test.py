@@ -19,6 +19,7 @@ from pytest import CaptureFixture
 
 from deephall import Config, train
 from deephall.config import OptimizerName
+from deephall.networks import make_network
 
 
 @pytest.fixture
@@ -29,12 +30,18 @@ def simple_config():
     config.system.flux = 2
     config.system.interaction_strength = 0.0
     config.optim.iterations = 100
-    config.network.psiformer.num_layers = 1
-    config.network.psiformer.num_heads = 1
-    config.network.psiformer.heads_dim = 4
+    config.network.num_layers = 1
+    config.network.num_heads = 1
+    config.network.heads_dim = 4
     config.batch_size = 60
     config.log.initial_energy = False
     return config
+
+
+def test_make_network(simple_config: Config):
+    network = make_network(simple_config.system, simple_config.network)
+    assert network.num_layers == simple_config.network.num_layers
+    assert network.heads_dim == simple_config.network.heads_dim
 
 
 def test_training(simple_config: Config, tmp_path: Path, capsys: CaptureFixture[str]):

@@ -42,7 +42,7 @@ In this example, we place 6 electrons on a sphere with a total flux $2Q=15$ thro
 If you just want to test the installation, an even simpler example is the non-interacting case with a smaller network and batch size:
 
 ```bash
-deephall 'system.nspins=[3,0]' system.flux=2 system.interaction_strength=0 optim.iterations=100 network.psiformer.num_layers=2 batch_size=100
+deephall 'system.nspins=[3,0]' system.flux=2 system.interaction_strength=0 optim.iterations=100 network.num_layers=2 batch_size=100
 ```
 
 Details of available settings are available at [config.py](deephall/config.py).
@@ -59,7 +59,7 @@ config.system.nspins = (3, 0)
 config.system.flux = 2
 config.system.interaction_strength = 0.0
 config.optim.iterations = 100
-config.network.psiformer.num_layers = 2
+config.network.num_layers = 2
 config.batch_size = 100
 
 train(config)
@@ -88,45 +88,75 @@ netobs deephall unused deephall@one_rdm --with steps=20000 --net-restore save_pa
 
 ## Adding a New Neural Network Wavefunction
 
-To add a custom neural network wavefunction, follow these steps:
+To implement a custom neural network wavefunction, follow the steps below:
 
-### Step 1: Create the Network Implementation
+### Step 1: Implement the Network
 
-Add a new file in the `deephall/networks/` directory, e.g., `deephall/networks/mynet.py`. You can refer to the existing implementation in `deephall/networks/psiformer.py` as a template.
+Create a new file in the `deephall/networks/` directory, for example, `deephall/networks/mynet.py`. You can use the existing implementation in `deephall/networks/psiformer.py` as a reference. Below is a minimal example of how to structure your network:
 
-### Step 2: Configure the Network
+```python
+from flax import linen as nn
+from deephall.config import System
 
-Update the configuration file `deephall/config.py`:
-- Define a new dataclass. Create a dataclass `MyNet` to store the configurations specific to your network. For example:
-  ```python
-  @dataclass
-  class MyNet:
-      hidden_dim: int = 128
-      num_layers: int = 3
-  ```
-- Add the dataclass to the `Network` config. Include your dataclass in the `Network` configuration by adding a line like:
-  ```python
+# This line is essential as it registers the module with DeepHall
+__all__ = ["MyNet"]
 
-  @dataclass
-  class Network:
-      ...
-      mynet: MyNet = field(default_factory=MyNet)
-  ```
-- Extend the `NetworkType` enum. Add a new entry in the `NetworkType` enum to identify your network, e.g.:
-  ```python
-  class NetworkType(StrEnum):
-      ...
-      mynet = "mynet"
-  ```
-### Step 3: Register the Network
 
-Add a construction function in `deephall/networks/__init__.py`. Register your network by adding a conditional block to instantiate it based on the `NetworkType`. For example:
- ```python
-if network.type == NetworkType.mynet:
-    return MyNet(network.mynet.hidden_dim, network.mynet.num_layers)
+class MyNet(nn.Module):
+    """A custom neural network wavefunction."""
+    system: System  # System configuration
+    num_layers: int = 2  # Number of layers (default: 2)
+
+    @nn.compact
+    def __call__(self, electrons):
+        """
+        Forward pass of the network.
+
+        Args:
+            electrons: Input electron coordinates.
+
+        Returns:
+            logpsi: The log wavefunction value.
+        """
+        ...
+        return logpsi
 ```
 
-For more details, commit [d5dc18c](https://github.com/bytedance/DeepHall/commit/d5dc18c) serves as an example for adding a new network.
+### Step 2: Integrate the Network into DeepHall
+
+#### Using the Network via CLI
+
+To use `MyNet` from the command line, specify the network type and its parameters as follows:
+
+```bash
+deephall 'system.nspins=[3,0]' system.flux=2 network.type=mynet network.num_layers=1
+```
+
+#### Using the Network via API
+
+To integrate `MyNet` programmatically, configure the settings in Python as shown below:
+
+```python
+from deephall import Config, train
+
+config = Config()
+config.system.nspins = (3, 0)
+config.system.flux = 2
+config.network.type = "mynet"
+config.network.num_layers = 2
+
+train(config)
+```
+
+### Additional Notes
+
+- **Custom File Locations**: While placing your network file in `deephall/networks/` is recommended, you can store it elsewhere. In such cases, specify the full path to the file in the `network.type` parameter. For example:
+
+  ```bash
+  deephall 'system.nspins=[3,0]' system.flux=2 network.type=/path/to/mynet.py network.num_layers=1
+  ```
+
+- **Best Practices**: Ensure that your network class inherits from `nn.Module` and adheres to the expected interface. The `__all__` variable is crucial for module discovery by DeepHall.
 
 ## Citing Our Paper
 

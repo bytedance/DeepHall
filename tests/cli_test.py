@@ -42,6 +42,26 @@ def test_cli(dotlist: list[str], capsys: CaptureFixture[str]):
     assert "L_square=0.0000" in captured.err
 
 
+@pytest.mark.parametrize(
+    "network_type",
+    [
+        "deephall.networks.laughlin",
+        str(Path(__file__).parent.parent / "deephall" / "networks" / "laughlin.py"),
+    ],
+)
+def test_network_type(
+    network_type: str, dotlist: list[str], capsys: CaptureFixture[str]
+):
+    """Test using absolute module or file path for the network.type."""
+    dotlist = [
+        f"network.type={network_type}" if opt.startswith("network.type") else opt
+        for opt in dotlist
+    ]
+    cli(dotlist)
+    captured = capsys.readouterr()
+    assert "L_square=0.0000" in captured.err
+
+
 def test_yml(dotlist: list[str], tmp_path: Path, capsys: CaptureFixture[str]):
     config_path = tmp_path / "config.yml"
     with config_path.open("w", encoding="utf8") as f:

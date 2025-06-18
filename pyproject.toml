@@ -70,7 +70,10 @@ select = [
     "SIM", "C90",  # simplify code
     "PLW", "PLE",  # pylint rules
 ]
-ignore = ["D1"]
+ignore = [
+    "D1",      # We will progressively add docs
+    "FURB189"  # We are passing subclass of dict to OmegaConf
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

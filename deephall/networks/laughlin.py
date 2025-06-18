@@ -17,6 +17,8 @@ from jax import numpy as jnp
 
 from deephall.config import System
 
+__all__ = ["Laughlin"]
+
 
 class Laughlin(nn.Module):
     """Create Laughlin wavefunction for ground or quasiparticle/quasihole state."""

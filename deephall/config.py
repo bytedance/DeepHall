@@ -17,6 +17,8 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from enum import StrEnum
 from typing import Any, Self, TypeVar
 
+from omegaconf import DictConfig
+
 T = TypeVar("T")
 
 
@@ -79,24 +81,30 @@ class System:
     interaction_type: InteractionType = InteractionType.coulomb
 
 
-class NetworkType(StrEnum):
-    psiformer = "psiformer"
-    laughlin = "laughlin"
-    free = "free"
-
-
-@dataclass
-class PsiformerNetwork:
-    num_heads: int = 4
-    heads_dim: int = 64
-    num_layers: int = 2
-    determinants: int = 1
-
-
 @dataclass
 class Network:
-    type: NetworkType = NetworkType.psiformer
-    psiformer: PsiformerNetwork = field(default_factory=PsiformerNetwork)
+    type: str = "psiformer"
+
+
+class DotDict(dict):
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __delattr__(self, name):
+        try:
+            del self[name]
+        except KeyError:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
 
 
 @dataclass
@@ -223,7 +231,9 @@ class Config:
     laplacian: LaplacianMode = LaplacianMode.hessian
     seed: int = field(default_factory=lambda: int(time.time()))
     system: System = field(default_factory=System)
-    network: Network = field(default_factory=Network)
+    network: DictConfig = field(
+        default_factory=lambda: DictConfig({"type": "psiformer"})
+    )
     mcmc: MCMC = field(default_factory=MCMC)
     optim: Optim = field(default_factory=Optim)
     log: Log = field(default_factory=Log)
