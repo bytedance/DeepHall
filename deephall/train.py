@@ -112,7 +112,12 @@ def train_loop(cfg: Config, log_manager: LogManager):
             # Logging inital energy is helpful for debugging. If we have initial energy
             # but have error in training, it's probably optimizer's fault
             initial_stats, _ = constants.pmap(
-                make_loss_fn(network, cfg.system, LossMode.ENERGY_DIFF)
+                make_loss_fn(
+                    network,
+                    cfg.system,
+                    LossMode.ENERGY_DIFF,
+                    laplacian_mode=cfg.laplacian,
+                )
             )(params, data)
             logger.info("Initial energy: %s", initial_stats["energy"][0].real)
 
@@ -222,9 +227,9 @@ def cli(argv: list[str] | None = None) -> None:
     config = OmegaConf.merge(config, OmegaConf.from_dotlist(args.dotlist))
     if args.debug:
         with chex.fake_pmap_and_jit():
-            train(Config.from_dict(config))
+            train(Config.from_dict(cast(dict, config)))
     else:
-        train(Config.from_dict(config))
+        train(Config.from_dict(cast(dict, config)))
 
 
 if __name__ == "__main__":

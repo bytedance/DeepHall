@@ -24,7 +24,10 @@ from upath import UPath
 
 from deephall import constants
 from deephall.config import Config
-from deephall.hamiltonian import make_local_kinetic_energy, make_potential
+from deephall.hamiltonian import (
+    make_local_kinetic_energy_with_hessian,
+    make_potential,
+)
 from deephall.log import LogManager
 from deephall.mcmc import make_mcmc_step
 from deephall.netobs_bridge.hall_system import HallSystem
@@ -53,7 +56,9 @@ class DeepHallAdaptor(NetworkAdaptor[HallSystem]):
         self.batch_per_device = cfg.batch_size // jax.device_count()
         Q = cfg.system.flux / 2
         radius = jnp.array(cfg.system.radius or jnp.sqrt(Q))
-        self.kinetic_energy = make_local_kinetic_energy(self.network, Q, radius)
+        self.kinetic_energy = make_local_kinetic_energy_with_hessian(
+            self.network, Q, radius
+        )
         self.potential_energy = make_potential(cfg.system.interaction_type, Q, radius)
         _, state = LogManager.restore_checkpoint(ckpt_path)
 

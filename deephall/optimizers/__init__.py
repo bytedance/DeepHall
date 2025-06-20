@@ -25,7 +25,7 @@ from .none import make_inference_step
 def make_optimizer_step(
     cfg: Config, network: LogPsiNetwork
 ) -> tuple[TrainingInit, TrainingStep]:
-    loss_grad_fn = make_loss_fn(network, cfg.system)
+    loss_grad_fn = make_loss_fn(network, cfg.system, laplacian_mode=cfg.laplacian)
     if cfg.optim.optimizer == OptimizerName.adam:
         return make_adam_training_step(cfg.optim.adam, loss_grad_fn)
     if cfg.optim.optimizer == OptimizerName.kfac:

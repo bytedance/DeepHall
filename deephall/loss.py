@@ -22,8 +22,8 @@ from chex import ArrayTree
 from jax import numpy as jnp
 
 from deephall import constants
-from deephall.config import System
-from deephall.hamiltonian import OtherObservables, local_energy
+from deephall.config import LaplacianMode, System
+from deephall.hamiltonian import OtherObservables, make_local_energy
 from deephall.types import LogPsiNetwork, LossStats
 
 
@@ -47,7 +47,10 @@ class LossMode(enum.Enum):
 
 
 def make_loss_fn(
-    network: LogPsiNetwork, system: System, mode: LossMode = LossMode.ENERGY_GRAD
+    network: LogPsiNetwork,
+    system: System,
+    mode: LossMode = LossMode.ENERGY_GRAD,
+    laplacian_mode: LaplacianMode = LaplacianMode.hessian,
 ) -> Callable[[ArrayTree, jnp.ndarray], tuple[LossStats, jnp.ndarray]]:
     r"""Create the loss function and its gradient for the neural network.
 
@@ -59,7 +62,7 @@ def make_loss_fn(
         -\langle O\rangle \langle \frac{\partial}{\partial\alpha}\log\psi\rangle
     ]
     """
-    loss_fn = local_energy(network, system)
+    loss_fn = make_local_energy(network, system, laplacian_mode=laplacian_mode)
     batch_local_energy = jax.vmap(loss_fn, in_axes=(None, 0))
 
     df_real = jax.vmap(

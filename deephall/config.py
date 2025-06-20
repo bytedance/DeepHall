@@ -194,9 +194,15 @@ class Log:
     """
 
 
+class LaplacianMode(StrEnum):
+    hessian = "hessian"
+    forward = "forward"
+
+
 @dataclass
 class Config:
     batch_size: int = 3360  # 32*3*5*7
+    laplacian: LaplacianMode = LaplacianMode.hessian
     seed: int = field(default_factory=lambda: int(time.time()))
     system: System = field(default_factory=System)
     network: Network = field(default_factory=Network)
