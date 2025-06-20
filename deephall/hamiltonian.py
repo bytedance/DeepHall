@@ -91,7 +91,7 @@ def make_local_kinetic_energy(f: LogPsiNetwork, Q: float, r: jnp.ndarray):
     Returns:
         Callable that evaluates the local kinetic energy, \frac{|\Lambda|^2 f}{2 R^2 f},
         where
-            \frac{|\Lambda|^2 f}{f} = -\frac{\nabla^2 f}{f} + (Q \cot \theta)^2
+            \frac{|\Lambda|^2 f}{f} = -R^2 \frac{\nabla^2 f}{f} + (Q \cot \theta)^2
                 + 2i Q \frac{\cot \theta}{\sin \theta} \frac{\partial f}{\partial \phi},
         and
             -\frac{\nabla^2 f}{f} = - [\nabla^2 \log f + (\nabla \log f)^2].
