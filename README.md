@@ -17,12 +17,15 @@ DeepHall requires Python `>=3.11` and JAX `0.4.35`. It is highly recommended to 
 # Remember to activate your virtual environment
 git clone https://github.com/bytedance/DeepHall
 cd DeepHall
-pip install -e .                  # Install CPU version
-pip install -e ".[cuda12]"        # Download CUDA libraries from PyPI
-pip install -e ".[cuda12_local]"  # Or, use local CUDA libraries
+pip install -e . -r requirements.txt                  # Install CPU version
+pip install -e ".[cuda12]" -r requirements.txt        # Download CUDA libraries from PyPI
+pip install -e ".[cuda12_local]" -r requirements.txt  # Or, use local CUDA libraries
 ```
 
-To customize JAX installation, please refer to the [JAX documentation](https://jax.readthedocs.io/en/latest/installation.html).
+
+You can also use commands like `uv sync --extra cuda12` if you have [uv](https://docs.astral.sh/uv/) installed.
+
+To further customize JAX installation, please refer to the [JAX documentation](https://jax.readthedocs.io/en/latest/installation.html).
 
 ## Performing Simulations
 

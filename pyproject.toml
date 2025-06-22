@@ -33,7 +33,7 @@ deephall = "deephall.netobs_bridge.cli_extend:expansions"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pre-commit",
     "ruff",
@@ -41,6 +41,8 @@ dev = [
     "pydoclint",
     "pytest",
 ]
+
+[project.optional-dependencies]
 cuda12 = ["jax[cuda12]==0.4.35"]
 cuda12_local = ["jax[cuda12_local]==0.4.35"]
 

@@ -15,6 +15,11 @@ repos:
   rev: 0.5.14
   hooks:
     - id: pydoclint
+- repo: https://github.com/astral-sh/uv-pre-commit
+  rev: 0.7.13
+  hooks:
+    - id: uv-export
+      args: ["--no-hashes", "--frozen", "--output-file=requirements.txt"]
 - repo: local # mypy should run locally
   hooks:
     - id: mypy
