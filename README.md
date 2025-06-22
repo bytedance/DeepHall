@@ -131,7 +131,7 @@ If you use this code in your work, please cite the following paper:
 
 ```bib
 @article{PhysRevLett.134.176503,
-  title = {Describing Landau Level Mixing in Fractional Quantum Hall States with Deep Learning},
+  title = {Describing {{Landau}} Level Mixing in Fractional Quantum {{Hall}} States with Deep Learning},
   author = {Qian, Yubing and Zhao, Tongzhou and Zhang, Jianxiao and Xiang, Tao and Li, Xiang and Chen, Ji},
   journal = {Phys. Rev. Lett.},
   volume = {134},
