@@ -14,10 +14,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-    "jax==0.4.35", # JAX 0.4.35 is the last version supported by kfac_jax 0.0.6
+    "jax==0.6.0",
     "numpy~=2.0",
     "flax~=0.10.2",
-    "kfac_jax==0.0.6",
+    "kfac_jax==0.0.7",
     "omegaconf~=2.3",
     "universal_pathlib~=0.2.2",
     "folx>=0.2.17",
@@ -43,8 +43,8 @@ dev = [
 ]
 
 [project.optional-dependencies]
-cuda12 = ["jax[cuda12]==0.4.35"]
-cuda12_local = ["jax[cuda12_local]==0.4.35"]
+cuda12 = ["jax[cuda12]==0.6.0"]
+cuda12_local = ["jax[cuda12_local]==0.6.0"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
