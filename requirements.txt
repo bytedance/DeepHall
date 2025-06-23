@@ -42,6 +42,8 @@ docstring-parser-fork==0.0.12
     # via pydoclint
 etils==1.12.2
     # via orbax-checkpoint
+execnet==2.1.1
+    # via pytest-xdist
 filelock==3.18.0
     # via virtualenv
 flax==0.10.4
@@ -150,6 +152,8 @@ pygments==2.19.1
     #   pytest
     #   rich
 pytest==8.4.1
+    # via pytest-xdist
+pytest-xdist==3.7.0
 pyyaml==6.0.2
     # via
     #   flax
