@@ -1,18 +1,18 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v2.3.0
+  rev: v5.0.0
   hooks:
     - id: check-yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.8.0
+  rev: v0.12.0
   hooks:
     - id: ruff
       args: [ --fix ]
     - id: ruff-format
 - repo: https://github.com/jsh9/pydoclint
-  rev: 0.5.14
+  rev: 0.6.7
   hooks:
     - id: pydoclint
 - repo: https://github.com/astral-sh/uv-pre-commit
