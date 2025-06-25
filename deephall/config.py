@@ -147,6 +147,24 @@ class OptimizerAdam:
 class OptimizerKfac:
     lr: LearningRate = field(default_factory=lambda: LearningRate(rate=0.05))
 
+    norm_constraint: float = 1e-3
+    """
+    The update is scaled down so that its approximate squared Fisher norm ``v^T F v``
+    is at most the specified value.
+    """
+
+    curvature_ema: float = 0.95
+    "The decay factor used when calculating the covariance estimate moving averages."
+
+    l2_reg: float = 0.0
+    "Tell the optimizer what L2 regularization coefficient you are using (if any)."
+
+    inverse_update_period: int = 1
+    "The number of steps in between updating the inverse curvature approximation."
+
+    damping: float = 1e-3
+    "Fixed damping parameter."
+
 
 @dataclass
 class Optim:

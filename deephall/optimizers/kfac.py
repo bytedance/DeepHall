@@ -221,24 +221,24 @@ def make_kfac_training_step(
 
     optimizer = kfac_jax.Optimizer(
         val_and_grad,
-        l2_reg=0.0,
-        norm_constraint=1e-3,
-        value_func_has_aux=True,
+        num_burnin_steps=0,  # burn in requires data iterator, which is not implemented
+        value_func_has_aux=True,  # LossStats are returned as aux data
+        multi_device=True,  # automatically uses pmap
+        l2_reg=optim_cfg.l2_reg,
+        norm_constraint=optim_cfg.norm_constraint,
         learning_rate_schedule=optim_cfg.lr.schedule,
-        curvature_ema=0.95,
-        inverse_update_period=1,
-        min_damping=1e-4,
-        num_burnin_steps=0,
-        register_only_generic=False,
+        curvature_ema=optim_cfg.curvature_ema,
+        inverse_update_period=optim_cfg.inverse_update_period,
         estimation_mode="fisher_exact",
-        multi_device=True,
         pmap_axis_name=constants.PMAP_AXIS_NAME,
         auto_register_kwargs=dict(
             graph_patterns=GRAPH_PATTERNS,
         ),
     )
     shared_mom = kfac_jax.utils.replicate_all_local_devices(jnp.zeros([]))
-    shared_damping = kfac_jax.utils.replicate_all_local_devices(jnp.asarray(1e-3))
+    shared_damping = kfac_jax.utils.replicate_all_local_devices(
+        jnp.asarray(optim_cfg.damping)
+    )
 
     def init(params, key, data):
         return optimizer.init(params, key, data)
