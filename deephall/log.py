@@ -15,7 +15,6 @@
 import datetime
 import difflib
 import logging
-import operator
 import subprocess
 import sys
 from collections.abc import Generator
@@ -36,35 +35,40 @@ from deephall.types import CheckpointState
 logger = logging.getLogger("deephall")
 
 
-def dedup_pytree(tree: ArrayTree):
-    """Take only the first row of each leaf of a PyTree."""
-    return jax.tree.map(operator.itemgetter(0), tree)
+def dedup_pytree_as_npz(name: str, tree: ArrayTree) -> dict[str, jnp.ndarray]:
+    """Save PyTree to npz and remove duplication in devices.
+
+    Args:
+        name: The name of the array in npz file.
+        tree: PyTree to be saved.
+
+    Returns:
+        dict of file name and arrays to be used by `np.savez`.
+    """
+    vals, _ = jax.tree.flatten(tree)
+    return {f"{name}/{i}": val[0] for i, val in enumerate(vals)}
 
 
-def redup_pytree(tree: ArrayTree, dups: int):
-    """Duplicate each leaf of a PyTree at the first row."""
-    return jax.tree.map(lambda x: jnp.repeat(x[None], dups, axis=0), tree)
+def redup_npz_as_pytree(
+    name: str, npf: dict, ref_pytree: ArrayTree, cards: int = 1
+) -> ArrayTree:
+    """Restore PyTree from npz and add duplication across devices.
 
+    Args:
+        name: The name of the array in npz file.
+        npf: Opened NumPy file object.
+        ref_pytree: Reference PyTree whose structure will be used for restore.
+        cards: Number of duplications to be made.
 
-def deduplicate(self: CheckpointState):
-    assert self.data.ndim == 4, "data has wrong shape to deduplicate"
-    return CheckpointState(
-        dedup_pytree(self.params),
-        self.data.reshape(-1, *self.data.shape[2:]),
-        np.asarray(dedup_pytree(self.opt_state), dtype="object"),
-        self.mcmc_width[0],
-    )
-
-
-def reduplicate(self: CheckpointState):
-    assert self.data.ndim == 3, "data has wrong shape to reduplicate"
-    cards = jax.local_device_count()
-    return CheckpointState(
-        redup_pytree(self.params, cards),
-        self.data.reshape(cards, -1, *self.data.shape[1:]),
-        redup_pytree(self.opt_state, cards),
-        jnp.ones(cards) * self.mcmc_width,
-    )
+    Returns:
+        The restored PyTree.
+    """
+    _, treedef = jax.tree.flatten(ref_pytree)
+    vals = [
+        jnp.repeat(npf[f"{name}/{i}"][None], cards, 0)
+        for i in range(treedef.num_leaves)
+    ]
+    return jax.tree.unflatten(treedef, vals)
 
 
 def init_logging():
@@ -172,45 +176,73 @@ class LogManager:
             f.writelines(current_config_yaml)
 
     def save_checkpoint(self, step: int, state: CheckpointState) -> None:
+        assert state.data.ndim == 4, "data has wrong shape"
+
         ckpt_path = self.save_path / f"ckpt_{step:06d}.npz"
         logger.info("Saving checkpoint %s", ckpt_path)
-        with ckpt_path.open("wb") as f:
-            np.savez_compressed(f, step=step, **deduplicate(state)._asdict())
 
-    def try_restore_checkpoint(self) -> tuple[int, CheckpointState] | None:
+        with ckpt_path.open("wb") as f:
+            np.savez_compressed(
+                f,
+                allow_pickle=False,
+                step=step,
+                data=state.data.reshape(-1, *state.data.shape[2:]),
+                mcmc_width=state.mcmc_width[0],
+                **dedup_pytree_as_npz("params", state.params),
+                **dedup_pytree_as_npz("opt_state", state.opt_state),
+            )
+
+    def try_restore_checkpoint(
+        self, fallback: tuple[int, CheckpointState]
+    ) -> tuple[int, CheckpointState]:
         """Try to restore checkpoints from `restore_path`."""
+        template_state = fallback[1]
         if not self.restore_path.exists():
-            return None
+            return fallback
         if self.restore_path.is_file():
-            return self.restore_checkpoint(self.restore_path)
+            return self.restore_checkpoint(
+                self.restore_path, template_state.params, template_state.opt_state
+            )
         for ckpt_path in sorted(self.restore_path.glob("ckpt_*.npz"), reverse=True):
             ckpt_path = cast(UPath, ckpt_path)
             try:
-                return self.restore_checkpoint(ckpt_path)
+                return self.restore_checkpoint(
+                    ckpt_path, template_state.params, template_state.opt_state
+                )
             except Exception as e:
                 logger.warning("Error restoring checkpoint %s: %s", ckpt_path, e)
-        return None
+        return fallback
 
     @staticmethod
-    def restore_checkpoint(ckpt: str | Path | UPath) -> tuple[int, CheckpointState]:
+    def restore_checkpoint(
+        ckpt: str | Path | UPath,
+        template_params: ArrayTree,
+        template_opt_state: ArrayTree,
+    ) -> tuple[int, CheckpointState]:
         """Resore a given checkpoint.
 
         Args:
             ckpt: Checkpoint path.
+            template_params: Reference object whose structure is used to restore
+                parameters.
+            template_opt_state: Reference object whose structure is used to restore
+                opt_state.
 
         Returns:
             A tuple containing current step and state.
         """
         ckpt_path = UPath(ckpt)
-        with ckpt_path.open("rb") as npf, np.load(npf, allow_pickle=True) as f:
+        with ckpt_path.open("rb") as npf, np.load(npf) as f:
             step = f["step"].tolist() + 1
-            state = reduplicate(
-                CheckpointState(
-                    f["params"].tolist(),
-                    f["data"],
-                    f["opt_state"].tolist(),
-                    f["mcmc_width"],
-                )
+            data = f["data"]
+            assert data.ndim == 3, "data has wrong shape"
+
+            cards = jax.local_device_count()
+            state = CheckpointState(
+                redup_npz_as_pytree("params", f, template_params, cards),
+                data.reshape(cards, -1, *data.shape[1:]),
+                redup_npz_as_pytree("opt_state", f, template_opt_state, cards),
+                jnp.ones(cards) * f["mcmc_width"],
             )
             logger.info("Restored checkpoint %s", ckpt_path)
             return step, state

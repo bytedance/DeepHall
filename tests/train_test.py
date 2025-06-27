@@ -18,6 +18,7 @@ import pytest
 from pytest import CaptureFixture
 
 from deephall import Config, train
+from deephall.config import OptimizerName
 
 
 @pytest.fixture
@@ -48,8 +49,15 @@ def test_training(simple_config: Config, tmp_path: Path, capsys: CaptureFixture[
     assert "energy=1.4" in captured.err
 
 
-def test_checkpoint(simple_config: Config, tmp_path: Path, capsys: CaptureFixture[str]):
+@pytest.mark.parametrize("optimizer", (OptimizerName.kfac, OptimizerName.adam))
+def test_checkpoint(
+    simple_config: Config,
+    tmp_path: Path,
+    capsys: CaptureFixture[str],
+    optimizer: OptimizerName,
+):
     simple_config.optim.iterations = 1
+    simple_config.optim.optimizer = optimizer
     simple_config.log.save_path = str(tmp_path)
     train(simple_config)
     assert (tmp_path / "ckpt_000000.npz").exists()

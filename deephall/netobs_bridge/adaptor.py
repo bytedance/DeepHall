@@ -60,7 +60,10 @@ class DeepHallAdaptor(NetworkAdaptor[HallSystem]):
             self.network, Q, radius
         )
         self.potential_energy = make_potential(cfg.system.interaction_type, Q, radius)
-        _, state = LogManager.restore_checkpoint(ckpt_path)
+        template_params = model.init(
+            jax.random.PRNGKey(0), jnp.zeros((sum(cfg.system.nspins), 2))
+        )
+        _, state = LogManager.restore_checkpoint(ckpt_path, template_params, ())
 
         return (
             state.params,
