@@ -16,30 +16,28 @@
 # ("Bytedance's Modifications"). All Bytedance's Modifications are
 # Copyright 2024-2025 Bytedance Ltd. and/or its affiliates.
 
-import dataclasses
+"""Define and register custom KFAC blocks.
+
+The default handling of dense blocks are not flexible enough, and thus we need to
+handle it by ourselves. Besides, as elaborated in `complex_support.py`, we should
+update the estimation of curvatures to support complex numbers.
+"""
+
 from collections.abc import Sequence
 from functools import partial
 from math import prod
 from string import ascii_lowercase
-from typing import cast
 
 import jax
 import kfac_jax
-from chex import PRNGKey
 from jax import numpy as jnp
-
-from deephall import constants
-from deephall.config import OptimizerKfac
-from deephall.log import CheckpointState
-from deephall.loss import LossStats
-from deephall.types import TrainingInit, TrainingStep
 
 
 class RepeatedDenseBlock(kfac_jax.DenseTwoKroneckerFactored):
     """Dense block that is repeatedly applied to multiple inputs (e.g. vmap).
 
     By default, kfac_jax will assume that the blocks only transforms the last axis,
-    i.e. `ij,jk->ik`. However, in general, the dense block ca be repeatedly applied
+    i.e. `ij,jk->ik`. However, in general, the dense block can be repeatedly applied
     (i.e. transforming the last axis and keeping all other axis onchanged), or we can
     transform more axis, and the output shape is not necessarily the same as the input.
     Therefore, we need to modify the ways to handle the parameters.
@@ -94,7 +92,12 @@ class RepeatedDenseBlock(kfac_jax.DenseTwoKroneckerFactored):
         identity_weight: kfac_jax.utils.Numeric,
         batch_size: kfac_jax.utils.Numeric,
     ) -> kfac_jax.KroneckerFactored.State:
-        """Reshape the imputs and outputs before feeding them into parernt class."""
+        """Reshape the imputs and outputs take care of the complex conjugate."""
+        assert 1 <= self.number_of_parameters <= 2
+
+        # Copy this first since we mutate it later in this function.
+        state = state.copy()
+
         [x] = estimation_data.primals.inputs
         [dy] = estimation_data.tangents.outputs
         assert x.shape[0] == batch_size
@@ -103,27 +106,44 @@ class RepeatedDenseBlock(kfac_jax.DenseTwoKroneckerFactored):
         feature_size_in = prod(x.shape[-w_dim_in:])
         feature_size_out = prod(dy.shape[-w_dim_out:])
 
-        estimation_data = dataclasses.replace(
-            estimation_data,
-            primals=dataclasses.replace(
-                estimation_data.primals,
-                inputs=(x.reshape([-1, feature_size_in]),),
-            ),
-            tangents=dataclasses.replace(
-                estimation_data.tangents,
-                outputs=(dy.reshape([-1, feature_size_out]),),
-            ),
-        )
-
+        x = x.reshape([-1, feature_size_in])
+        dy = dy.reshape([-1, feature_size_out])
         batch_size = x.size // feature_size_in
-        return super().update_curvature_matrix_estimate(
-            state=state,
-            estimation_data=estimation_data,
-            ema_old=ema_old,
-            ema_new=ema_new,
-            identity_weight=identity_weight,
-            batch_size=batch_size,
-        )
+        assert all(arg.shape[0] == batch_size for arg in (x, dy))
+
+        if self.number_of_parameters == 2:
+            x_one = jnp.ones_like(x[:, :1])
+            x = jnp.concatenate([x, x_one], axis=1)
+
+        input_stats = jnp.einsum("ay,az->yz", x, x) / batch_size
+        output_stats = jnp.einsum("ay,az->yz", dy.conj(), dy).real / batch_size
+
+        state.factors[0].update(input_stats, ema_old, ema_new)
+        state.factors[1].update(output_stats, ema_old, ema_new)
+
+        return state
+
+
+class NaiveDiagonal(kfac_jax.Diagonal):
+    """Approximates the diagonal of the curvature with in the most obvious way."""
+
+    def update_curvature_matrix_estimate(
+        self,
+        state: kfac_jax.Diagonal.State,  # type: ignore
+        estimation_data: kfac_jax.LayerVjpData[kfac_jax.utils.Array],
+        ema_old: kfac_jax.utils.Numeric,
+        ema_new: kfac_jax.utils.Numeric,
+        identity_weight: kfac_jax.utils.Numeric,
+        batch_size: kfac_jax.utils.Numeric,
+    ) -> kfac_jax.Diagonal.State:
+        del identity_weight
+        state = state.copy()
+
+        for factor, dw in zip(state.diagonal_factors, estimation_data.tangents.params):
+            # Take care of complex numbers
+            factor.update(jnp.real(dw.conj() * dw) / batch_size, ema_old, ema_new)
+
+        return state
 
 
 def _repeated_dense(
@@ -210,52 +230,4 @@ GRAPH_PATTERNS = (
 )
 
 kfac_jax.set_default_tag_to_block_ctor("repeated_dense", RepeatedDenseBlock)
-
-
-def make_kfac_training_step(
-    optim_cfg: OptimizerKfac, loss_grad_fn
-) -> tuple[TrainingInit, TrainingStep]:
-    def val_and_grad(params, data):
-        stats, grads = loss_grad_fn(params, data)
-        return (stats["energy"], stats), grads
-
-    optimizer = kfac_jax.Optimizer(
-        val_and_grad,
-        num_burnin_steps=0,  # burn in requires data iterator, which is not implemented
-        value_func_has_aux=True,  # LossStats are returned as aux data
-        multi_device=True,  # automatically uses pmap
-        l2_reg=optim_cfg.l2_reg,
-        norm_constraint=optim_cfg.norm_constraint,
-        learning_rate_schedule=optim_cfg.lr.schedule,
-        curvature_ema=optim_cfg.curvature_ema,
-        inverse_update_period=optim_cfg.inverse_update_period,
-        estimation_mode="fisher_exact",
-        pmap_axis_name=constants.PMAP_AXIS_NAME,
-        auto_register_kwargs=dict(
-            graph_patterns=GRAPH_PATTERNS,
-        ),
-    )
-    shared_mom = kfac_jax.utils.replicate_all_local_devices(jnp.zeros([]))
-    shared_damping = kfac_jax.utils.replicate_all_local_devices(
-        jnp.asarray(optim_cfg.damping)
-    )
-
-    def init(params, key, data):
-        return optimizer.init(params, key, data)
-
-    def step(state: CheckpointState, key: PRNGKey):
-        params, data, opt_state, mcmc_width = state
-        params, opt_state, *_, stats = optimizer.step(
-            params=params,
-            state=opt_state,
-            rng=key,
-            batch=data,
-            momentum=shared_mom,
-            damping=shared_damping,
-        )
-        return (
-            CheckpointState(params, data, opt_state, mcmc_width),
-            cast(LossStats, stats["aux"]),
-        )
-
-    return init, step
+kfac_jax.set_default_tag_to_block_ctor("generic", NaiveDiagonal)

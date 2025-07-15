@@ -66,11 +66,12 @@ def make_loss_fn(
     batch_local_energy = jax.vmap(loss_fn, in_axes=(None, 0))
 
     df_real = jax.vmap(
-        jax.value_and_grad(lambda params, x: network(params, x).real), in_axes=(None, 0)
+        jax.grad(lambda params, x: network(params, x).real), in_axes=(None, 0)
     )
     df_imag = jax.vmap(
-        jax.value_and_grad(lambda params, x: network(params, x).imag), in_axes=(None, 0)
+        jax.grad(lambda params, x: network(params, x).imag), in_axes=(None, 0)
     )
+    batch_network = jax.vmap(network, in_axes=(None, 0))
 
     def loss_prod(grad_logpsi_conj, diff):
         diff = diff.reshape(
@@ -108,13 +109,11 @@ def make_loss_fn(
         if mode == LossMode.ENERGY_DIFF:
             return stats, diff
 
-        primal_real, tangent_real = df_real(params, data)
-        _, tangent_imag = df_imag(params, data)
-        kfac_jax.register_normal_predictive_distribution(primal_real[:, None])
+        kfac_jax.register_squared_error_loss(batch_network(params, data)[:, None])
         tangent_out = jax.tree.map(
             lambda real, imag: loss_prod(real - 1j * imag, diff),
-            tangent_real,
-            tangent_imag,
+            df_real(params, data),
+            df_imag(params, data),
         )
 
         if mode == LossMode.ENERGY_GRAD:
