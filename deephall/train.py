@@ -14,19 +14,15 @@
 
 import logging
 import signal
-import sys
 import time
-from argparse import ArgumentParser
 from typing import cast
 
-import chex
 import jax
 import kfac_jax
 import numpy as np
 from chex import PRNGKey
 from flax import linen as nn
 from jax import numpy as jnp
-from omegaconf import OmegaConf
 
 from deephall import constants, mcmc, optimizers
 from deephall.config import Config, OptimizerName
@@ -206,31 +202,3 @@ class GracefulKiller:
         signal.signal(signal.SIGINT, self.original_int)
         signal.signal(signal.SIGTERM, self.original_term)
         self.kill_now = True
-
-
-def cli(argv: list[str] | None = None) -> None:
-    parser = ArgumentParser(
-        prog="deephall",
-        description="Simulating the fractional quantum Hall effect (FQHE) with "
-        "neural network variational Monte Carlo.",
-    )
-    parser.add_argument(
-        "dotlist", help="path.to.key=value pairs for configuration", nargs="*"
-    )
-    parser.add_argument("--yml", help="config YML file to merge")
-    parser.add_argument("--debug", help="disable JAX pmap", action="store_true")
-    args = parser.parse_args(argv or sys.argv[1:] or ["--help"])
-
-    config = OmegaConf.structured(Config)
-    if args.yml:
-        config = OmegaConf.merge(config, OmegaConf.load(args.yml))
-    config = OmegaConf.merge(config, OmegaConf.from_dotlist(args.dotlist))
-    if args.debug:
-        with chex.fake_pmap_and_jit():
-            train(Config.from_dict(cast(dict, config)))
-    else:
-        train(Config.from_dict(cast(dict, config)))
-
-
-if __name__ == "__main__":
-    cli()

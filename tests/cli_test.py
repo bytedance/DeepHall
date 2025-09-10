@@ -15,10 +15,10 @@
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 from omegaconf import OmegaConf
-from pytest import CaptureFixture
 
-from deephall.train import cli
+from deephall.cli import cli
 
 
 @pytest.fixture
@@ -34,12 +34,12 @@ def dotlist(tmp_path: Path):
     ]
 
 
-def test_cli(dotlist: list[str], capsys: CaptureFixture[str]):
-    cli(dotlist)
-    captured = capsys.readouterr()
-    assert "iterations: 100\n" in captured.err
-    assert "energy=2.58" in captured.err
-    assert "L_square=0.0000" in captured.err
+def test_cli(dotlist: list[str]):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["train", *dotlist])
+    assert "iterations: 100\n" in result.stderr
+    assert "energy=2.58" in result.stderr
+    assert "L_square=0.0000" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -49,26 +49,26 @@ def test_cli(dotlist: list[str], capsys: CaptureFixture[str]):
         str(Path(__file__).parent.parent / "deephall" / "networks" / "laughlin.py"),
     ],
 )
-def test_network_type(
-    network_type: str, dotlist: list[str], capsys: CaptureFixture[str]
-):
+def test_network_type(network_type: str, dotlist: list[str]):
     """Test using absolute module or file path for the network.type."""
+    runner = CliRunner()
     dotlist = [
         f"network.type={network_type}" if opt.startswith("network.type") else opt
         for opt in dotlist
     ]
-    cli(dotlist)
-    captured = capsys.readouterr()
-    assert "L_square=0.0000" in captured.err
+    result = runner.invoke(cli, ["train", *dotlist])
+    assert "L_square=0.0000" in result.stderr
 
 
-def test_yml(dotlist: list[str], tmp_path: Path, capsys: CaptureFixture[str]):
+def test_yml(dotlist: list[str], tmp_path: Path):
+    runner = CliRunner()
     config_path = tmp_path / "config.yml"
     with config_path.open("w", encoding="utf8") as f:
         f.write(OmegaConf.to_yaml(OmegaConf.from_dotlist(dotlist)))
-    cli(["--yml", str(config_path), "optim.iterations=50"])
+    result = runner.invoke(
+        cli, ["train", "--yml", str(config_path), "optim.iterations=50"]
+    )
 
-    captured = capsys.readouterr()
-    assert "iterations: 50\n" in captured.err
-    assert "energy=2.58" in captured.err
-    assert "L_square=0.0000" in captured.err
+    assert "iterations: 50\n" in result.stderr
+    assert "energy=2.58" in result.stderr
+    assert "L_square=0.0000" in result.stderr

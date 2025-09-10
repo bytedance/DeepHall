@@ -21,10 +21,11 @@ dependencies = [
     "omegaconf~=2.3",
     "universal_pathlib~=0.2.2",
     "folx>=0.2.17",
+    "click>=8.2.1",
 ]
 
 [project.scripts]
-deephall = "deephall.train:cli"
+deephall = "deephall.cli:cli"
 
 [project.entry-points."netobs.cli.expansions"]
 deephall = "deephall.netobs_bridge.cli_extend:expansions"

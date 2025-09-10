@@ -21,7 +21,9 @@ chex==0.1.89
     #   distrax
     #   optax
 click==8.2.1
-    # via pydoclint
+    # via
+    #   deephall
+    #   pydoclint
 cloudpickle==3.1.1
     # via tensorflow-probability
 colorama==0.4.6 ; sys_platform == 'win32'

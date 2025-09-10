@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -102,6 +102,7 @@ name = "deephall"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "flax" },
     { name = "folx" },
     { name = "jax" },
@@ -131,6 +132,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.2.1" },
     { name = "flax", specifier = "~=0.10.2" },
     { name = "folx", specifier = ">=0.2.17" },
     { name = "jax", specifier = "==0.6.0" },
