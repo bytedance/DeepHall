@@ -14,6 +14,7 @@
 
 import click
 
+from deephall.cli.ckpt_convert import convert_checkpoint
 from deephall.cli.train import train
 
 
@@ -28,3 +29,4 @@ def cli(ctx: click.Context):
 
 
 cli.add_command(train)
+cli.add_command(convert_checkpoint)
