@@ -14,6 +14,7 @@ antlr4-python3-runtime==4.9.3
     # via omegaconf
 attrs==25.3.0
     # via dm-tree
+beartype==0.21.0
 chex==0.1.89
     # via
     #   distrax
@@ -78,7 +79,9 @@ jaxlib==0.6.0
     #   kfac-jax
     #   optax
 jaxtyping==0.3.2
-    # via folx
+    # via
+    #   deephall
+    #   folx
 kfac-jax==0.0.7
     # via deephall
 markdown-it-py==3.0.0

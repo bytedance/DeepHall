@@ -14,6 +14,14 @@
 
 import os
 
+from jaxtyping import install_import_hook
+
 cpu_count = min(os.cpu_count() or 1, 6)
 os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={cpu_count}"
+
+
+modules_to_jaxtyping = ["mcmc", "hamiltonian", "loss"]
+install_import_hook(
+    [f"deephall.{mod}" for mod in modules_to_jaxtyping], "beartype.beartype"
+)

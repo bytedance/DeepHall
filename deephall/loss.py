@@ -13,21 +13,20 @@
 # limitations under the License.
 
 import enum
-from collections.abc import Callable
 from typing import cast
 
 import jax
 import kfac_jax
-from chex import ArrayTree
 from jax import numpy as jnp
+from jaxtyping import Array, Complex, Float
 
 from deephall import constants
 from deephall.config import LaplacianMode, System
 from deephall.hamiltonian import OtherObservables, make_local_energy
-from deephall.types import LogPsiNetwork, LossStats
+from deephall.types import LogPsiNetwork, LossStats, Params
 
 
-def iqr_clip_real(x: jnp.ndarray, scale=100.0) -> jnp.ndarray:
+def iqr_clip_real(x: Float[Array, " n"], scale=100.0) -> Float[Array, " n"]:
     """Clip the observables based on interquartile range (IQR)."""
     q1 = jnp.nanquantile(x, 0.25)
     q3 = jnp.nanquantile(x, 0.75)
@@ -35,7 +34,7 @@ def iqr_clip_real(x: jnp.ndarray, scale=100.0) -> jnp.ndarray:
     return jnp.clip(x, q1 - scale * iqr, q3 + scale * iqr)
 
 
-def iqr_clip(x: jnp.ndarray, scale=100.0) -> jnp.ndarray:
+def iqr_clip(x: Complex[Array, " n"], scale=100.0) -> Complex[Array, " n"]:
     """Clip complex observables by applying IQR clip on both real and imag parts."""
     return iqr_clip_real(x.real, scale) + 1j * iqr_clip_real(x.imag, scale)
 
@@ -51,7 +50,7 @@ def make_loss_fn(
     system: System,
     mode: LossMode = LossMode.ENERGY_GRAD,
     laplacian_mode: LaplacianMode = LaplacianMode.hessian,
-) -> Callable[[ArrayTree, jnp.ndarray], tuple[LossStats, jnp.ndarray]]:
+):
     r"""Create the loss function and its gradient for the neural network.
 
     The loss function is just the sum of the (clipped) average energy and other penalty
@@ -79,7 +78,9 @@ def make_loss_fn(
         )
         return jnp.nan_to_num(2 * jnp.nanmean(grad_logpsi_conj * diff, axis=0))
 
-    def loss_and_grad(params: ArrayTree, data: jnp.ndarray):
+    def loss_and_grad(
+        params: Params, data: Float[Array, "batch nelec 2"]
+    ) -> tuple[LossStats, Params | Complex[Array, " batch"]]:
         el, other_observables = batch_local_energy(params, data)
         pmean_observables = cast(
             OtherObservables,

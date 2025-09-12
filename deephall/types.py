@@ -12,11 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import NamedTuple, Protocol, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    NamedTuple,
+    Protocol,
+    TypedDict,
+    runtime_checkable,
+)
 
 from chex import ArrayTree, PRNGKey
 from jax import numpy as jnp
+from jaxtyping import Array, PyTree
 from optax import OptState
+
+# PyTree from jaxtyping is not friendly to static type checkers
+if TYPE_CHECKING:
+    Params = ArrayTree
+else:
+    Params = PyTree[Array, "T"]
 
 
 class AngularMomenta(TypedDict):
@@ -40,15 +53,16 @@ class LossStats(OtherObservables):
 
 
 class CheckpointState(NamedTuple):
-    params: ArrayTree
+    params: Params
     data: jnp.ndarray
     opt_state: OptState
     mcmc_width: jnp.ndarray
 
 
+@runtime_checkable
 class LocalEnergy(Protocol):
     def __call__(
-        self, params: ArrayTree, data: jnp.ndarray
+        self, params: Params, data: jnp.ndarray
     ) -> tuple[jnp.ndarray, OtherObservables]:
         """Returns the local energy of a Hamiltonian at a configuration.
 
@@ -65,8 +79,9 @@ class LocalEnergy(Protocol):
         """
 
 
+@runtime_checkable
 class LogPsiNetwork(Protocol):
-    def __call__(self, params: ArrayTree, data: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, params: Params, data: jnp.ndarray) -> jnp.ndarray:
         pass
 
 
@@ -78,5 +93,5 @@ class TrainingStep(Protocol):
 
 
 class TrainingInit(Protocol):
-    def __call__(self, params: ArrayTree, key: PRNGKey, data: jnp.ndarray):
+    def __call__(self, params: Params, key: PRNGKey, data: jnp.ndarray):
         pass

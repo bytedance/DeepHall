@@ -12,26 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Callable
 from functools import partial
 
 import folx
 import jax
 import jax.numpy as jnp
-from chex import ArrayTree
 from folx.api import FwdLaplArray
 from jax.numpy import cos, sin, tan
+from jaxtyping import Array, Complex, Float
 
 from deephall.config import InteractionType, LaplacianMode, System
-from deephall.types import AngularMomenta, LocalEnergy, LogPsiNetwork, OtherObservables
+from deephall.types import (
+    AngularMomenta,
+    LocalEnergy,
+    LogPsiNetwork,
+    OtherObservables,
+    Params,
+)
 
 
-def coulomb_potential(cos12: jnp.ndarray, Q: float, r: jnp.ndarray) -> jnp.ndarray:
+def coulomb_potential(
+    cos12: Float[Array, "nelec nelec"],
+    Q: float | int,
+    r: float | int | Float[Array, ""],
+) -> Float[Array, ""]:
     """Returns the electron-electron Coulomb potential.
 
     Args:
         cos12: The cosine of the angle between two electrons.
-            Shape (..., nelec, nelec).
         Q: Monopole strength. Unused.
         r: Sphere radius.
 
@@ -43,7 +51,9 @@ def coulomb_potential(cos12: jnp.ndarray, Q: float, r: jnp.ndarray) -> jnp.ndarr
     return jnp.sum(jnp.triu(1 / r_ee, k=1)) / r
 
 
-def harmonic_potential(cos12: jnp.ndarray, Q: float) -> jnp.ndarray:
+def harmonic_potential(
+    cos12: Float[Array, "nelec nelec"], Q: float | int
+) -> Float[Array, ""]:
     """Returns the simple harmonic potential.
 
     The word "harmonic" describes the form of the Haldane pseudopotential on LLL:
@@ -53,7 +63,6 @@ def harmonic_potential(cos12: jnp.ndarray, Q: float) -> jnp.ndarray:
 
     Args:
         cos12: The cosine of the angle between two electrons.
-            Shape (..., nelec, nelec).
         Q: Monopole strength.
 
     Returns:
@@ -63,26 +72,28 @@ def harmonic_potential(cos12: jnp.ndarray, Q: float) -> jnp.ndarray:
 
 
 def make_potential(
-    interaction_type: InteractionType, Q: float, r: jnp.ndarray
-) -> Callable[[jnp.ndarray], jnp.ndarray]:
+    interaction_type: InteractionType, Q: float | int, r: float | int | Float[Array, ""]
+):
     """Create potential energy function with a given type and geometry."""
     if interaction_type == InteractionType.coulomb:
         potential_function = partial(coulomb_potential, Q=Q, r=r)
     if interaction_type == InteractionType.harmonic:
         potential_function = partial(harmonic_potential, Q=Q)
 
-    def potential(data: jnp.ndarray) -> jnp.ndarray:
+    def potential(data: Float[Array, "nelec 2"]) -> Float[Array, ""]:
         theta, phi = data[..., 0], data[..., 1]
-        xyz_data = jnp.stack(
+        xyz_data: Float[Array, "nelec 3"] = jnp.stack(
             [sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)], axis=-1
         )
-        cos12 = jnp.einsum("ia,ja->ij", xyz_data, xyz_data)
+        cos12: Float[Array, "nelec nelec"] = jnp.einsum("ia,ja->ij", xyz_data, xyz_data)
         return potential_function(cos12)
 
     return potential
 
 
-def make_local_kinetic_energy_with_hessian(f: LogPsiNetwork, Q: float, r: jnp.ndarray):
+def make_local_kinetic_energy_with_hessian(
+    f: LogPsiNetwork, Q: float | int, r: float | int | Float[Array, ""]
+):
     r"""Creates a function to for the local kinetic energy.
 
     Args:
@@ -100,8 +111,8 @@ def make_local_kinetic_energy_with_hessian(f: LogPsiNetwork, Q: float, r: jnp.nd
     """
 
     def _lapl_over_f(
-        params: ArrayTree, data: jnp.ndarray
-    ) -> tuple[jnp.ndarray, AngularMomenta]:
+        params: Params, data: Float[Array, "nelec 2"]
+    ) -> tuple[Complex[Array, ""], AngularMomenta]:
         theta, phi = data[..., 0], data[..., 1]
 
         #        +----------------------------------------------------------+
@@ -178,12 +189,14 @@ def make_local_kinetic_energy_with_hessian(f: LogPsiNetwork, Q: float, r: jnp.nd
     return _lapl_over_f
 
 
-def make_local_kinetic_energy_with_fwdlap(f: LogPsiNetwork, Q: float, r: jnp.ndarray):
+def make_local_kinetic_energy_with_fwdlap(
+    f: LogPsiNetwork, Q: float | int, r: float | int | Float[Array, ""]
+):
     angular_momentum = make_local_angular_momentum_square(f, Q)
 
     def _lapl_over_f(
-        params: ArrayTree, data: jnp.ndarray
-    ) -> tuple[jnp.ndarray, AngularMomenta]:
+        params: Params, data: Float[Array, "nelec 2"]
+    ) -> tuple[Complex[Array, ""], AngularMomenta]:
         theta = data[..., 0]
 
         fwd_f = folx.forward_laplacian(lambda x: f(params, x))
@@ -211,7 +224,7 @@ def make_local_kinetic_energy_with_fwdlap(f: LogPsiNetwork, Q: float, r: jnp.nda
     return _lapl_over_f
 
 
-def make_angular_momentum_operator(f: LogPsiNetwork, Q: float):
+def make_angular_momentum_operator(f: LogPsiNetwork, Q: float | int):
     r"""Create angular momentum operator $\hat L$.
 
     Following section 3.10 of the book "Composite Fermions", $\hat L$ is defined as:
@@ -246,9 +259,9 @@ def make_angular_momentum_operator(f: LogPsiNetwork, Q: float):
     jac_f_imag = jax.jacrev(lambda p, d: f(p, d).imag, argnums=1)
 
     def angular_momentum_operator(
-        params: ArrayTree, data: jnp.ndarray
-    ) -> tuple[jnp.ndarray, jnp.ndarray]:
-        """Calculate terms of angular momentum operator acting on `f`.
+        params: Params, data: Float[Array, "nelec 2"]
+    ) -> tuple[Complex[Array, "... 3"], Float[Array, "3"]]:
+        r"""Calculate terms of angular momentum operator acting on `f`.
 
         Args:
             params: network parameters.
@@ -257,6 +270,9 @@ def make_angular_momentum_operator(f: LogPsiNetwork, Q: float):
         Returns:
             A tuple of:
             - The result of the differential operator acting on `f`
+                Depending on the output shape of `f`, which can be a complex number
+                (usual wavefunction \log \psi) or an array of complex numbers
+                ((\hat L_0 \psi) / \psi), the output shape can be different.
             - The "constant" magneric term.
 
             The local angular momentum is the sum of these two terms when f is logpsi.
@@ -285,7 +301,7 @@ def make_angular_momentum_operator(f: LogPsiNetwork, Q: float):
     return angular_momentum_operator
 
 
-def make_local_angular_momentum_square(f: LogPsiNetwork, Q: float):
+def make_local_angular_momentum_square(f: LogPsiNetwork, Q: float | int):
     r"""Create a function evaluating local anguar momentum square $(\hat L^2 psi)/psi$.
 
     Although angular momentum square operator requires second derivatives w.r.t. psi,
@@ -331,7 +347,9 @@ def make_local_angular_momentum_square(f: LogPsiNetwork, Q: float):
         lambda p, d: sum(angular_momentum_operator_on_logpsi(p, d)), Q
     )
 
-    def angular_momentum_square(params: ArrayTree, data: jnp.ndarray) -> AngularMomenta:
+    def angular_momentum_square(
+        params: Params, data: Float[Array, "nelec 2"]
+    ) -> AngularMomenta:
         angular_momentum = sum(angular_momentum_operator_on_logpsi(params, data))
         angular_momentum_square_components = (
             # Dot product follow \delta_{ij} a_i b_j, and thus we only take diagonal sum
@@ -375,8 +393,8 @@ def make_local_energy(
     pe = make_potential(system.interaction_type, Q, radius)
 
     def _e_l(
-        params: ArrayTree, data: jnp.ndarray
-    ) -> tuple[jnp.ndarray, OtherObservables]:
+        params: Params, data: Float[Array, "nelec 2"]
+    ) -> tuple[Complex[Array, ""], OtherObservables]:
         """Returns the total energy.
 
         Args:

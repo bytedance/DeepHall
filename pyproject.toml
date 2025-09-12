@@ -22,6 +22,7 @@ dependencies = [
     "universal_pathlib~=0.2.2",
     "folx>=0.2.19",
     "click>=8.2.1",
+    "jaxtyping>=0.3.2",
 ]
 
 [project.scripts]
@@ -43,6 +44,7 @@ lint = [
 test = [
     "pytest",
     "pytest-xdist>=3.7.0",
+    "beartype>=0.21.0",
 ]
 dev = [
   {include-group = "lint"},
@@ -78,6 +80,7 @@ select = [
 ]
 ignore = [
     "D1",      # We will progressively add docs
+    "F722",    # Ruff confuses between forward references and jaxtyping notations
     "FURB189"  # We are passing subclass of dict to OmegaConf
 ]
 

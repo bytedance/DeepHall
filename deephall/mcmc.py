@@ -14,22 +14,23 @@
 
 import jax
 import numpy as np
-from chex import ArrayTree, PRNGKey
+from chex import PRNGKey
 from jax import lax
 from jax import numpy as jnp
+from jaxtyping import Array, Float
 
 from deephall import constants
-from deephall.types import LogPsiNetwork
+from deephall.types import LogPsiNetwork, Params
 
 
 def mh_update(
-    params: ArrayTree,
+    params: Params,
     f: LogPsiNetwork,
-    x1: jnp.ndarray,
+    x1: Float[Array, "batch nelec 2"],
     key: PRNGKey,
-    lp_1: jnp.ndarray,
-    num_accepts: jnp.ndarray,
-    stddev: float = 0.02,
+    lp_1: Float[Array, " batch"],
+    num_accepts: Float[Array, ""],
+    stddev: float | Float[Array, ""] = 0.02,
 ):
     """Performs one Metropolis-Hastings step using an all-electron move.
 
@@ -37,7 +38,7 @@ def mh_update(
       params: Wavefuncttion parameters.
       f: Callable with signature f(params, x) which returns the log of the
         wavefunction (i.e. the sqaure root of the log probability of x).
-      x1: Initial MCMC configurations. Shape (batch, nelectrons*ndim).
+      x1: Initial MCMC configurations.
       key: RNG state.
       lp_1: log probability of f evaluated at x1 given parameters params.
       num_accepts: Number of MH move proposals accepted.
@@ -64,7 +65,9 @@ def mh_update(
     return x_new, key_new, lp_new, num_accepts
 
 
-def sph_sampling(key: PRNGKey, x1: jnp.ndarray, stddev: float) -> jnp.ndarray:
+def sph_sampling(
+    key: PRNGKey, x1: Float[Array, "batch nelec 2"], stddev: float | Float[Array, ""]
+) -> Float[Array, "batch nelec 2"]:
     """Propose electrons MCMC move on the sphere.
 
     Suppose the electron is at the north pole, similar to the Euclidean Gaussian MCMC
@@ -87,7 +90,7 @@ def sph_sampling(key: PRNGKey, x1: jnp.ndarray, stddev: float) -> jnp.ndarray:
     # Assuming the electrons are on the north pole, and work on theta' - phi' coord
     theta_prime = jnp.arctan(jax.random.normal(key_theta, shape=theta.shape) * stddev)
     phi_prime = jax.random.uniform(key_phi, phi.shape) * 2 * jnp.pi
-    xyz_prime = jnp.stack(
+    xyz_prime: Float[Array, "batch nelec 3"] = jnp.stack(
         [
             jnp.sin(theta_prime) * jnp.cos(phi_prime),
             jnp.sin(theta_prime) * jnp.sin(phi_prime),
@@ -98,14 +101,14 @@ def sph_sampling(key: PRNGKey, x1: jnp.ndarray, stddev: float) -> jnp.ndarray:
     one = jnp.ones_like(phi)
     zero = jnp.zeros_like(phi)
     # We then rotate the pole pointing to the direction of each electron
-    rot_z = jnp.array(
+    rot_z: Float[Array, "3 3 batch nelec"] = jnp.array(
         [
             [jnp.cos(phi), -jnp.sin(phi), zero],
             [jnp.sin(phi), jnp.cos(phi), zero],
             [zero, zero, one],
         ]
-    )  # Shape (3, 3, nbatch, nelec)
-    rot_y = jnp.array(
+    )
+    rot_y: Float[Array, "3 3 batch nelec"] = jnp.array(
         [
             [jnp.cos(theta), zero, jnp.sin(theta)],
             [zero, one, zero],
@@ -138,7 +141,10 @@ def make_mcmc_step(
 
     @jax.jit
     def mcmc_step(
-        params: ArrayTree, data: jnp.ndarray, key: PRNGKey, width: jnp.ndarray
+        params: Params,
+        data: Float[Array, "batch nelec 2"],
+        key: PRNGKey,
+        width: float | Float[Array, ""],
     ):
         """Performs a set of MCMC steps.
 
@@ -153,7 +159,7 @@ def make_mcmc_step(
           updated RNG state and pmove the average probability a move was accepted.
         """
 
-        def step_fn(i, x):
+        def step_fn(_, x):
             return mh_update(params, batch_network, *x, stddev=width)
 
         logprob = 2.0 * batch_network(params, data).real

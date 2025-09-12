@@ -34,8 +34,12 @@ def dotlist(tmp_path: Path):
     ]
 
 
-def test_cli(dotlist: list[str]):
-    runner = CliRunner()
+@pytest.fixture
+def runner():
+    return CliRunner(catch_exceptions=False)
+
+
+def test_cli(runner, dotlist: list[str]):
     result = runner.invoke(cli, ["train", *dotlist])
     assert "iterations: 100\n" in result.stderr
     assert "energy=2.58" in result.stderr
@@ -49,9 +53,8 @@ def test_cli(dotlist: list[str]):
         str(Path(__file__).parent.parent / "deephall" / "networks" / "laughlin.py"),
     ],
 )
-def test_network_type(network_type: str, dotlist: list[str]):
+def test_network_type(runner, network_type: str, dotlist: list[str]):
     """Test using absolute module or file path for the network.type."""
-    runner = CliRunner()
     dotlist = [
         f"network.type={network_type}" if opt.startswith("network.type") else opt
         for opt in dotlist
@@ -60,8 +63,7 @@ def test_network_type(network_type: str, dotlist: list[str]):
     assert "L_square=0.0000" in result.stderr
 
 
-def test_yml(dotlist: list[str], tmp_path: Path):
-    runner = CliRunner()
+def test_yml(runner, dotlist: list[str], tmp_path: Path):
     config_path = tmp_path / "config.yml"
     with config_path.open("w", encoding="utf8") as f:
         f.write(OmegaConf.to_yaml(OmegaConf.from_dotlist(dotlist)))
