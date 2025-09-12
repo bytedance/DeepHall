@@ -37,7 +37,7 @@ You can use the `deephall train` command to run FQHE simulations. The configurat
 deephall train 'system.nspins=[6,0]' system.flux=15 optim.iterations=100
 ```
 
-In this example, we place 6 electrons on a sphere with a total flux $2Q=15$ through the spherical surface. The radius of the sphere is implicitly set as $\sqrt{Q}=\sqrt{15/2}$. This configuration corresponds to 1/3 filling. (Remember that the particle–flux relation on the sphere geometry is $2Q = N / \nu - \mathcal{S}$, where $\mathcal{S}=3$ for 1/3 filling.) The energy output includes only the kinetic part and the electron–electron interactions.
+In this example, we place six spin-polarized electrons on a sphere with a total magnetic flux of $2Q = 15$ passing through its surface. (Currently, only spin-polarized configurations are supported.) The radius of the sphere is implicitly set to $\sqrt{Q} = \sqrt{15/2}$. This configuration corresponds to a filling factor of $1/3$. Recall that on the sphere, the particle–flux relation is given by $2Q = N / \nu - \mathcal{S}$, where $\mathcal{S} = 3$ for $1/3$ filling. The reported energy includes contributions from both the kinetic term and the electron–electron interactions.
 
 If you just want to test the installation, an even simpler example is the non-interacting case with a smaller network and batch size:
 

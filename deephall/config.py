@@ -64,7 +64,10 @@ class System:
     r"By default, the radius of the sphere is fixed at $\sqrt{Q}$."
 
     nspins: tuple[int, int] = (3, 0)
-    "Number of spin-up and spin-down electrons."
+    """Number of spin-up and spin-down electrons.
+
+    Currently only spin-polarized configurations are supported.
+    """
 
     interaction_strength: float = 1.0
     "The factor for the potential energy."
