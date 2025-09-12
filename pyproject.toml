@@ -14,13 +14,13 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-    "jax==0.6.0",
+    "jax>=0.4.36",
     "numpy~=2.0",
     "flax~=0.10.2",
     "kfac_jax==0.0.7",
     "omegaconf~=2.3",
     "universal_pathlib~=0.2.2",
-    "folx>=0.2.17",
+    "folx>=0.2.19",
     "click>=8.2.1",
 ]
 
@@ -35,13 +35,18 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = [
-    "pre-commit",
+lint = [
     "ruff",
     "mypy",
     "pydoclint",
+]
+test = [
     "pytest",
     "pytest-xdist>=3.7.0",
+]
+dev = [
+  {include-group = "lint"},
+  {include-group = "test"}
 ]
 
 [project.optional-dependencies]
