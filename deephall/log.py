@@ -140,7 +140,7 @@ class StatsWriter:
 class LogManager:
     def __init__(self, cfg: Config):
         if cfg.log.save_path is None:
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H:%M:%S")
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             self.save_path = UPath(
                 f"DeepHall_n{sum(cfg.system.nspins)}l{cfg.system.flux}_{timestamp}"
             )

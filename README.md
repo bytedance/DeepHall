@@ -67,7 +67,7 @@ train(config)
 
 ## Output
 
-By default, the results directory is named like `DeepHall_n3l2_xxxxxx_xx:xx:xx`. You can configure the output location with the `log.save_path` config, which can be any writable path on the local machine or a remote path supported by [universal_pathlib](https://github.com/fsspec/universal_pathlib).
+By default, the results directory is named like `DeepHall_n3l2_xxxxxx_xxxxxx`. You can configure the output location with the `log.save_path` config, which can be any writable path on the local machine or a remote path supported by [universal_pathlib](https://github.com/fsspec/universal_pathlib).
 
 In the results directory, the file you will need most of the time is `train_stats.csv`, which contains the energy, angular momentum, and other useful quantities per step. The checkpoint files like `ckpt_000099.npz` store Monte Carlo walkers and neural network parameters so that the wavefunction can be analyzed, and the training can be resumed.
 
