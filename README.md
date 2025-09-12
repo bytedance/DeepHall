@@ -34,7 +34,7 @@ To further customize JAX installation, please refer to the [JAX documentation](h
 You can use the `deephall train` command to run FQHE simulations. The configurations can be passed to DeepHall using the `key=value` syntax (see [OmegaConf](https://omegaconf.readthedocs.io/en/2.3_branch/usage.html#from-a-dot-list)). A simple example would be:
 
 ```bash
-deephall train 'system.nspins=[6,0]' system.flux=15 optim.iterations=100
+deephall train "system.nspins=[6,0]" system.flux=15 optim.iterations=100
 ```
 
 In this example, we place six spin-polarized electrons on a sphere with a total magnetic flux of $2Q = 15$ passing through its surface. (Currently, only spin-polarized configurations are supported.) The radius of the sphere is implicitly set to $\sqrt{Q} = \sqrt{15/2}$. This configuration corresponds to a filling factor of $1/3$. Recall that on the sphere, the particle–flux relation is given by $2Q = N / \nu - \mathcal{S}$, where $\mathcal{S} = 3$ for $1/3$ filling. The reported energy includes contributions from both the kinetic term and the electron–electron interactions.
@@ -42,7 +42,7 @@ In this example, we place six spin-polarized electrons on a sphere with a total 
 If you just want to test the installation, an even simpler example is the non-interacting case with a smaller network and batch size:
 
 ```bash
-deephall train 'system.nspins=[3,0]' system.flux=2 system.interaction_strength=0 optim.iterations=100 network.num_layers=2 batch_size=100
+deephall train "system.nspins=[3,0]" system.flux=2 system.interaction_strength=0 optim.iterations=100 network.num_layers=2 batch_size=100
 ```
 
 Details of available settings are available at [config.py](deephall/config.py).
@@ -129,7 +129,7 @@ class MyNet(nn.Module):
 To use `MyNet` from the command line, specify the network type and its parameters as follows:
 
 ```bash
-deephall train 'system.nspins=[3,0]' system.flux=2 network.type=mynet network.num_layers=1
+deephall train "system.nspins=[3,0]" system.flux=2 network.type=mynet network.num_layers=1
 ```
 
 #### Using the Network via API
@@ -153,7 +153,7 @@ train(config)
 - **Custom File Locations**: While placing your network file in `deephall/networks/` is recommended, you can store it elsewhere. In such cases, specify the full path to the file in the `network.type` parameter. For example:
 
   ```bash
-  deephall train 'system.nspins=[3,0]' system.flux=2 network.type=/path/to/mynet.py network.num_layers=1
+  deephall train "system.nspins=[3,0]" system.flux=2 network.type=/path/to/mynet.py network.num_layers=1
   ```
 
 - **Best Practices**: Ensure that your network class inherits from `nn.Module` and adheres to the expected interface. The `__all__` variable is crucial for module discovery by DeepHall.
